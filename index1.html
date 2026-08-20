@@ -171,119 +171,126 @@
     { q: "50. ข้อใดคือสิ่งที่ควรจดบันทึกหลังโทรหาลูกค้า", a: "C", choices: ["จำนวนเพื่อนของลูกค้า", "ที่อยู่บ้าน", "ความต้องการและข้อสงสัยของลูกค้า", "วันเกิดของตัวแทน"] },
     { q: "49. ข้อใดต่อไปนี้เกี่ยวข้องกับโรคที่มักถูกปฏิเสธการทำประกัน?", a: "A", choices: ["โรคที่มีความเสี่ยงต่อชีวิตสูง", "โรคที่รักษาหายขาดแล้ว", "โรคทั่วไปที่ไม่รุนแรง", "โรคที่ไม่มีผลต่อการทำงาน"] },
     { q: "50. ข้อใดต่อไปนี้เกี่ยวข้องกับโรคที่มักถูกปฏิเสธการทำประกัน?", a: "A", choices: ["โรคที่มีความเสี่ยงต่อชีวิตสูง", "โรคที่รักษาหายขาดแล้ว", "โรคทั่วไปที่ไม่รุนแรง", "โรคที่ไม่มีผลต่อการทำงาน"] },
-];
-        // --- DOM Elements ---
-        const quizForm = document.getElementById('quizForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const loading = document.getElementById('loading');
-        const resultDiv = document.getElementById('result');
+]; // --- DOM Elements ---
+    const quizForm = document.getElementById('quizForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const loading = document.getElementById('loading');
+    const resultDiv = document.getElementById('result');
 
-        // ฟังก์ชันสร้างแบบทดสอบ (ไม่มีการเปลี่ยนแปลง)
-        function renderQuiz() {
-            loading.classList.add('hidden');
-            quizForm.classList.remove('hidden');
-            submitBtn.classList.remove('hidden');
-
-            questions.forEach((q, index) => {
-                const container = document.createElement('div');
-                container.className = 'question-container';
-
-                const questionTitle = document.createElement('h3');
-                questionTitle.textContent = q.q;
-                container.appendChild(questionTitle);
-
-                const ul = document.createElement('ul');
-                ul.className = 'choices';
-
-                q.choices.forEach((choice, i) => {
-                    const li = document.createElement('li');
-                    const label = document.createElement('label');
-                    const input = document.createElement('input');
-                    input.type = 'radio';
-                    input.name = `question-${index}`;
-                    input.value = String.fromCharCode(65 + i);
-                    label.appendChild(input);
-                    label.appendChild(document.createTextNode(`${input.value}. ${choice}`));
-                    li.appendChild(label);
-                    ul.appendChild(li);
-                });
-
-                container.appendChild(ul);
-                quizForm.appendChild(container);
-            });
+    // โหลดชื่อ และ ประสบการณ์ จาก Session / URL มาใส่ใน Input อัตโนมัติ (ถ้ามี)
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const storedName = urlParams.get('name') || sessionStorage.getItem('user_name');
+        if (storedName) {
+            document.getElementById('name').value = storedName;
         }
-        
-        // **ปรับปรุงการเรียกใช้: ห่อการดึง User ไว้ในฟังก์ชัน**
-        async function initialize() {
-            // ดึงข้อมูล User ก่อน เพื่อให้ currentUser มีค่า
-            try {
-                const { data: { user }, error } = await supabase.auth.getUser();
-                if (user) {
-                    currentUser = user;
-                }
-            } catch (e) {
-                console.warn("Could not retrieve current user. Running as anonymous.", e);
-            }
+    });
 
-            // เรียก renderQuiz() เพื่อสร้างคำถามหลังจากเตรียมข้อมูลเบื้องต้นเสร็จ
-            renderQuiz();
-        }
+    function renderQuiz() {
+        loading.classList.add('hidden');
+        quizForm.classList.remove('hidden');
+        submitBtn.classList.remove('hidden');
 
-        // เริ่มต้นการทำงานทันทีเมื่อสคริปต์โหลด
-        initialize();
+        questions.forEach((q, index) => {
+            const container = document.createElement('div');
+            container.className = 'question-container';
 
+            const questionTitle = document.createElement('h3');
+            questionTitle.textContent = q.q;
+            container.appendChild(questionTitle);
 
-        // --- Event Listener: Submit Button (ตรรกะ Supabase เดิมที่ถูกต้อง) ---
-        submitBtn.addEventListener('click', async () => {
-            // ปิดปุ่มทันทีเพื่อป้องกันการส่งซ้ำ
-            submitBtn.disabled = true;
+            const ul = document.createElement('ul');
+            ul.className = 'choices';
 
-            let score = 0;
-            const answers = [];
-
-            // 1. คำนวณคะแนนและรวบรวมคำตอบ
-            questions.forEach((q, index) => {
-                const selected = document.querySelector(`input[name="question-${index}"]:checked`);
-                const answer = selected ? selected.value : null; 
-                answers.push(answer);
-                if (answer === q.a) score++;
+            q.choices.forEach((choice, i) => {
+                const li = document.createElement('li');
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = `question-${index}`;
+                input.value = String.fromCharCode(65 + i);
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(`${input.value}. ${choice}`));
+                li.appendChild(label);
+                ul.appendChild(li);
             });
 
-            const totalQuestions = questions.length;
-            const userId = currentUser?.id || "anonymous";
-            const userEmail = currentUser?.email || "anonymous@example.com";
-const userName = document.getElementById('name').value;
-
-            // 2. บันทึกผลลัพธ์โดยใช้ Supabase Client
-            const { error } = await supabase
-                .from('quiz_results') // **ชื่อตาราง** (ต้องมีอยู่จริงใน Supabase)
-                .insert([
-                    {
-                        user_id: userId,
-                        user_email: userEmail,
-                        score: score,
-                        total_questions: totalQuestions,
-                        name: userName,
-answers: answers
-                    }
-                ]);
-
-            // 3. จัดการผลลัพธ์และการแสดงผล
-            if (error) {
-                console.error('Error saving quiz result:', error.message);
-                resultDiv.textContent = `เกิดข้อผิดพลาดในการบันทึกผล (รหัส: ${error.code}) กรุณาลองใหม่ หรือตรวจสอบ RLS ใน Supabase`;
-                resultDiv.style.backgroundColor = '#ffd1d1';
-                resultDiv.style.color = '#900';
-                submitBtn.disabled = false; // อนุญาตให้ลองใหม่ได้
-            } else {
-                console.log("Quiz result saved successfully.");
-                resultDiv.textContent = `บันทึกผลสำเร็จ! คุณได้คะแนน ${score} จาก ${totalQuestions} ข้อ`;
-                resultDiv.style.backgroundColor = '#d1ffd1';
-                resultDiv.style.color = '#005900';
-            }
-
-            resultDiv.style.display = 'block';
+            container.appendChild(ul);
+            quizForm.appendChild(container);
         });
-    </script>
+    }
+    
+    async function initialize() {
+        try {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            if (user) {
+                currentUser = user;
+            }
+        } catch (e) {
+            console.warn("Could not retrieve current user. Running as anonymous.", e);
+        }
+
+        renderQuiz();
+    }
+
+    initialize();
+
+    // --- Event Listener: Submit Button ---
+    submitBtn.addEventListener('click', async () => {
+        submitBtn.disabled = true;
+
+        let score = 0;
+        const answers = [];
+
+        // 1. คำนวณคะแนนและรวบรวมคำตอบ
+        questions.forEach((q, index) => {
+            const selected = document.querySelector(`input[name="question-${index}"]:checked`);
+            const answer = selected ? selected.value : null; 
+            answers.push(answer);
+            if (answer === q.a) score++;
+        });
+
+        const totalQuestions = questions.length;
+        
+        // 🔥 ดึงข้อมูล Email, Name และ Experience จาก URL Params หรือ sessionStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        const userEmail = urlParams.get('email') || sessionStorage.getItem('user_email') || currentUser?.email || "anonymous@example.com";
+        const userName = document.getElementById('name').value.trim() || urlParams.get('name') || sessionStorage.getItem('user_name') || "ไม่ระบุชื่อ";
+        
+        // 🔥 ดึงค่าประสบการณ์ (Experience)
+        const userExperience = urlParams.get('experience') || sessionStorage.getItem('user_experience') || "ไม่ระบุ";
+
+        // 2. บันทึกผลลัพธ์โดยใช้ Supabase Client (แนบ experience ไปด้วย)
+        const { error } = await supabase
+            .from('quiz_results')
+            .insert([
+                {
+                    user_email: userEmail,
+                    name: userName,
+                    score: score,
+                    total_questions: totalQuestions,
+                    answers: answers,
+                    experience: userExperience // 🔥 บันทึกค่าประสบการณ์ลง Supabase ที่นี่!
+                }
+            ]);
+
+        // 3. จัดการผลลัพธ์และการแสดงผล
+        if (error) {
+            console.error('Error saving quiz result:', error.message);
+            resultDiv.textContent = `เกิดข้อผิดพลาดในการบันทึกผล (รหัส: ${error.code}) กรุณาลองใหม่`;
+            resultDiv.style.backgroundColor = '#ffd1d1';
+            resultDiv.style.color = '#900';
+            submitBtn.disabled = false;
+        } else {
+            console.log("Quiz result saved successfully.");
+            resultDiv.textContent = `บันทึกผลสำเร็จ! คุณได้คะแนน ${score} จาก ${totalQuestions} ข้อ`;
+            resultDiv.style.backgroundColor = '#d1ffd1';
+            resultDiv.style.color = '#005900';
+        }
+
+        resultDiv.style.display = 'block';
+    });
+</script>
 </body>
 </html>
