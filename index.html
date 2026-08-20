@@ -76,19 +76,24 @@
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
-        const department = document.getElementById('department').value;
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const department = document.getElementById('department').value.trim();
         const experience = document.getElementById('experience').value; // ดึงค่าประสบการณ์
 
-        if (!email) {
-          showMessage('กรุณากรอกอีเมล', true);
+        if (!email || !experience) {
+          showMessage('กรุณากรอกข้อมูลให้ครบถ้วน รวมทั้งเลือกประสบการณ์', true);
           return;
         }
 
         showMessage('กำลังตรวจสอบ...', false);
 
         try {
+          // 🔥 1. บันทึกเข้า Session Storage เพื่อให้หน้าสอบดึงไปใช้ส่งเข้า quiz_results
+          sessionStorage.setItem('user_email', email);
+          sessionStorage.setItem('user_name', name);
+          sessionStorage.setItem('user_experience', experience);
+
           const { data: userData } = await supabase
             .from('users')
             .select('*')
@@ -96,23 +101,27 @@
             .single();
 
           if (userData) {
+            // 🔥 หากผู้ใช้มีอยู่แล้ว ทำการอัปเดตประสบการณ์ล่าสุดเข้าไปด้วย
+            await supabase
+              .from('users')
+              .update({ full_name: name, department: department, experience: experience })
+              .eq('email', email);
+
             showMessage('เข้าสู่ระบบสำเร็จ! กำลังนำทาง...', false);
-            // ส่งค่าไปยังหน้าสรุปผ่าน URL Parameter
             setTimeout(() => {
-              window.location.href = `index2.html?email=${encodeURIComponent(email)}`;
+              window.location.href = `index2.html?email=${encodeURIComponent(email)}&experience=${encodeURIComponent(experience)}`;
             }, 1500);
             return;
           }
 
-          // บันทึกข้อมูลรวมถึง experience ลง Supabase
+          // 🔥 2. บันทึกข้อมูลใหม่รวมถึง experience ลงตาราง users ใน Supabase
           await supabase.from('users').insert([
             { email, full_name: name, department, experience }
           ]);
           
           showMessage('ลงทะเบียนสำเร็จ! กำลังนำทาง...', false);
-          // ส่งค่าไปยังหน้าสรุปผ่าน URL Parameter
           setTimeout(() => {
-            window.location.href = `index1.html?email=${encodeURIComponent(email)}`;
+            window.location.href = `index1.html?email=${encodeURIComponent(email)}&experience=${encodeURIComponent(experience)}`;
           }, 1500);
 
         } catch (err) {
@@ -140,7 +149,7 @@
           <label for="department" class="form-label">แผนก:</label>
           <input type="text" id="department" name="department" class="form-control">
         </div>
-        <!-- เพิ่มช่องกรอกประสบการณ์ -->
+        <!-- ช่องกรอกประสบการณ์ -->
         <div class="mb-3">
           <label for="experience" class="form-label">ประสบการณ์ทำงาน:</label>
           <select id="experience" name="experience" class="form-select" required>
